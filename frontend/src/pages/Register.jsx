@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios'; // এক্সিওস ইনস্ট্যান্স ইમপোর্ট করলাম
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'member' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '', role: 'member' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -17,7 +17,6 @@ const Register = () => {
     setError('');
     setSuccess('');
     try {
-      // এখন আর পুরো 'http://localhost:5000/api' লেখা লাগছে না, শুধু এন্ডপয়েন্ট দিলেই হচ্ছে
       const res = await API.post('/auth/register', formData);
       setSuccess(res.data.message || 'Registration successful! 🎉');
       setTimeout(() => navigate('/login'), 2000);
@@ -47,6 +46,11 @@ const Register = () => {
           <div>
             <label className="block text-sm font-semibold text-slate-600 mb-2">Email Address</label>
             <input type="email" name="email" placeholder="name@example.com" value={formData.email} onChange={handleChange} required 
+                   className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-600 mb-2">Phone Number</label>
+            <input type="number" name="phone" placeholder="123-456-7890" value={formData.phone} onChange={handleChange} required 
                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
           </div>
           

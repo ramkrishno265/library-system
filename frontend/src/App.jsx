@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -13,8 +16,22 @@ function App() {
         <Route path="/login" element={<Login />} />
         
         {/* Dashboard er placeholders (Porobortite real page bosae dobo) */}
-        <Route path="/admin-dashboard" element={<div style={{ padding: '20px' }}><h1>Welcome to Admin Dashboard 👑</h1></div>} />
-        <Route path="/dashboard" element={<div style={{ padding: '20px' }}><h1>Welcome to Member Dashboard 📖</h1></div>} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['member', 'user']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </Router>
   );
