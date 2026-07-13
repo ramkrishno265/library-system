@@ -14,11 +14,8 @@ const bookSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: [true, 'Category is required'],
-      enum: {
-        values: ['Fiction', 'Poetry', 'Classic', 'Novel', 'Others'],
-        message: '{VALUE} is not a valid category', // ফর্মের বাইরের উল্টোপাল্টা ক্যাটাগরি আটকাতে
-      },
+      required: true,
+      trim: true
     },
     isbn: {
       type: String,
@@ -35,7 +32,7 @@ const bookSchema = new mongoose.Schema(
   },
   {
     // এটি অটোমেটিক createdAt এবং updatedAt টাইমস্ট্যাম্প হ্যান্ডেল করবে
-    timestamps: true, 
+    timestamps: true,
   }
 );
 

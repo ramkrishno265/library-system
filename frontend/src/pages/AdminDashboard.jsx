@@ -13,7 +13,7 @@ const AdminDashboard = () => {
     totalMembers: 0,
     totalBooks: 0,
     pendingRequests: 7,
-    totalIssued: 0, 
+    totalIssued: 0,
   });
 
   // 📝 ফরম এবং এডিটিং স্টেট (বইয়ের জন্য)
@@ -34,20 +34,23 @@ const AdminDashboard = () => {
   // 👥 মেম্বার ম্যানেজমেন্ট স্টেট
   const [membersList, setMembersList] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
-  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); 
-  const [memberSearchQuery, setMemberSearchQuery] = useState(''); 
-  const [isAddingMember, setIsAddingMember] = useState(false); 
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [isAddingMember, setIsAddingMember] = useState(false);
   const [newMemberForm, setNewMemberForm] = useState({ name: '', email: '', password: '', phone: '', role: 'member' });
 
   // 🔄 বই ধারের এবং লগের স্টেটসমূহ
-  const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false); 
+  const [isBorrowModalOpen, setIsBorrowModalOpen] = useState(false);
   const [borrowModalTab, setBorrowModalTab] = useState('issue'); // 'issue' অথবা 'logs' ট্যাব টগল করার জন্য
-  const [selectedBookForBorrow, setSelectedBookForBorrow] = useState(null); 
-  const [borrowMemberEmail, setBorrowMemberEmail] = useState(''); 
-  const [borrowLoading, setBorrowLoading] = useState(false); 
-  const [generalBorrowSearch, setGeneralBorrowSearch] = useState(''); 
+  const [selectedBookForBorrow, setSelectedBookForBorrow] = useState(null);
+  const [borrowMemberEmail, setBorrowMemberEmail] = useState('');
+  const [borrowMemberName, setBorrowMemberName] = useState('');
+  const [borrowMemberNumber, setBorrowMemberNumber] = useState('');
+  const [borrowLoading, setBorrowLoading] = useState(false);
+  const [generalBorrowSearch, setGeneralBorrowSearch] = useState('');
   const [issuedBooksList, setIssuedBooksList] = useState([]); // ইস্যু করা বইয়ের ইতিহাস/লগ রাখার জন্য
   const [logsLoading, setLogsLoading] = useState(false);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(true);
 
   // 👥 মেম্বারদের লিস্ট নিয়ে আসার ফাংশন
   const fetchMembers = async () => {
@@ -55,8 +58,9 @@ const AdminDashboard = () => {
       setMembersLoading(true);
       const response = await API.get('/auth/members');
       const membersData = response.data.success ? response.data.data : (response.data || []);
+      console.log("Fetched Members:", membersData);
       setMembersList(membersData);
-      
+
       // লাইভ মেম্বার কাউন্ট স্টেট আপডেট ফিক্স
       setAdminStats(prev => ({ ...prev, totalMembers: membersData.length }));
     } catch (error) {
@@ -70,14 +74,22 @@ const AdminDashboard = () => {
   const fetchIssuedLogs = async () => {
     try {
       setLogsLoading(true);
-      const response = await API.get('/borrows/logs'); // তোমার ব্যাকএন্ড রাউট অনুযায়ী চেঞ্জ করতে পারো
+
+      // 🎯 সরাসরি ফুল ইউআরএল দিয়ে কানেক্ট করা হলো
+
+      const response = await API.get('/borrows'); // 🎯 কাস্টম এপিআই ইনস্ট্যান্স ব্যবহার করে
+
       if (response.data.success) {
         setIssuedBooksList(response.data.data);
+        console.log("Issued Books Logs:", response.data.data);
         setAdminStats(prev => ({ ...prev, totalIssued: response.data.data.length }));
+
+
       }
     } catch (error) {
       console.error("Error fetching borrow logs:", error);
-      // ব্যাকএন্ড এপিআই রেডি না থাকলে ডেমো ডাটা দেখার জন্য (টেস্টিং পারপাস)
+
+      // ব্যাকআপ ডেমো ডাটা (যদি এপিআইতে ডাটা না থাকে)
       setIssuedBooksList([
         {
           _id: '1',
@@ -237,23 +249,31 @@ const AdminDashboard = () => {
 
     try {
       setBorrowLoading(true);
-      const response = await API.post('/borrows/borrow', {
+
+      const response = await API.post('/borrows', {
+        bookId: targetBook._id,
         memberEmail: borrowMemberEmail,
-        bookId: targetBook._id
+        name: borrowMemberName || "Admin/Member",
+        number: borrowMemberNumber
       });
 
       if (response.data.success) {
         alert("Book issued successfully! 📚🎉");
-        setIsBorrowModalOpen(false); 
-        setBorrowMemberEmail(''); 
+        setIsBorrowModalOpen(false);
+        setBorrowMemberEmail('');
+        setBorrowMemberName('');
+        setBorrowMemberNumber('');
         setSelectedBookForBorrow(null);
         setGeneralBorrowSearch('');
-        fetchBooks(); 
-        fetchIssuedLogs(); // লগের লিস্ট আপডেট করা
+        fetchBooks();
+        if (typeof fetchIssuedLogs === 'function') fetchIssuedLogs();
       }
     } catch (error) {
       console.error("Error borrowing book:", error);
-      alert(error.response?.data?.message || "Something went wrong!");
+
+      // 🔍 ফিক্স: ব্যাকএন্ডের আসল ডাটাবেজ/ভ্যালিডেশন এরর মেসেজটি অ্যালার্ট বক্সে দেখার জন্য:
+      const backendError = error.response?.data?.error || error.response?.data?.message || "Something went wrong!";
+      alert(`Backend Error: ${backendError}`);
     } finally {
       setBorrowLoading(false);
     }
@@ -263,6 +283,95 @@ const AdminDashboard = () => {
   const filteredEmailSuggestions = borrowMemberEmail
     ? membersList.filter(m => m.email?.toLowerCase().includes(borrowMemberEmail.toLowerCase()))
     : [];
+
+  // Pending Book requests lsit
+  const [pendingRequestsList, setPendingRequestsList] = useState([]);
+  const [pendingStats, setPendingStats] = useState({
+    pendingRequests: 0,
+  });
+
+  const [allBorrows, setAllBorrows] = useState([]);      // সব ধারের লিস্ট স্টোর করার জন্য
+  const [pendingList, setPendingList] = useState([]);    // শুধুমাত্র Pending লিস্ট রাখার জন্য
+  const [pendingCount, setPendingCount] = useState({
+    pendingRequests: 0,                                  // পেন্ডিং রিকোয়েস্টের সংখ্যা
+  });
+
+  const [pendingPopup, setPendingPopup] = useState(false); // পেন্ডিং রিকোয়েস্টের পপআপ দেখানোর জন্য
+
+  const fetchAndFilterBorrows = async () => {
+    try {
+      setLoading(true);
+      // 🎯 আপনার অল-Borrow লিস্ট আনার এপিআই
+      const response = await API.get('/borrows');
+
+      if (response.data) {
+        // ব্যাকএন্ডের রেসপন্স স্ট্রাকচার অনুযায়ী ডাটা নেওয়া (সাধারণত response.data.data বা সরাসরি response.data)
+        const fetchedData = response.data.data || response.data || [];
+
+        // ১. মেইন স্টেটে সব ডাটা সেভ করে রাখা হলো
+        setAllBorrows(fetchedData);
+
+        // 🔍 ২. ফ্রন্টএন্ডেই ফিল্টার করে শুধুমাত্র 'Pending' স্ট্যাটাসের ডাটা আলাদা করা হলো
+        const onlyPendingBooks = fetchedData.filter(item => item.status === 'Pending');
+
+        // ৩. পেন্ডিং লিস্ট এবং কাউন্ট স্টেট আপডেট করা হলো
+        setPendingList(onlyPendingBooks);
+        setPendingCount({
+          pendingRequests: onlyPendingBooks.length
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching borrow list:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchAndFilterBorrows();
+  }, []);
+
+  // ১. পপআপ ওপেন/ক্লোজ করার স্টেট
+
+
+  // 🟢 ২. রিকোয়েস্ট APPROVE (Active) করার ফাংশন
+  const handleApprove = async (borrowId) => {
+    try {
+      // আপনার ব্যাকএন্ডের স্ট্যাটাস আপডেট করার এপিআই রাউট (যেমন: /borrows/status/:id)
+      const response = await API.put(`/borrows/status/${borrowId}`, { status: 'Active' });
+
+      if (response.data) {
+        alert("Request approved and status updated to Active! 🎉");
+        // ডাটা আপডেট করার জন্য মেইন ফাংশনটি আবার কল করা হলো
+        fetchAndFilterBorrows();
+      }
+    } catch (error) {
+      console.error("Error approving request:", error);
+      alert(error.response?.data?.message || "Failed to approve request.");
+    }
+  };
+
+  // 🔴 ৩. রিকোয়েস্ট DELETE/Reject করার ফাংশন
+  const handleDelete = async (borrowId) => {
+    if (window.confirm("Are you sure you want to delete this borrow request?")) {
+      try {
+        // আপনার ব্যাকএন্ডের ডিলিট করার এপিআই রাউট (যেমন: /borrows/:id)
+        const response = await API.delete(`/borrows/${borrowId}`);
+
+        if (response.data) {
+          alert("Borrow request deleted successfully! 🗑️");
+          fetchAndFilterBorrows(); // লিস্ট রিফ্রেশ
+        }
+      } catch (error) {
+        console.error("Error deleting request:", error);
+        alert(error.response?.data?.message || "Failed to delete request.");
+      }
+    }
+  };
+
+
+
+
+
 
   return (
     <div className="min-h-screen bg-slate-100 flex font-sans relative">
@@ -334,9 +443,12 @@ const AdminDashboard = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-500">Pending Requests</p>
-              <h3 className="text-3xl font-bold text-amber-600 mt-1">{adminStats.pendingRequests}</h3>
+              <h3 className="text-3xl font-bold text-amber-600 mt-1">{pendingCount.pendingRequests}</h3>
             </div>
-            <div className="w-12 h-12 bg-amber-50 text-amber-600 text-xl flex items-center justify-center rounded-xl">⏳</div>
+            <div
+              onClick={() => setPendingPopup(true)}
+
+              className="w-12 h-12 bg-amber-50 text-amber-600 text-xl flex items-center justify-center rounded-xl">⏳</div>
           </div>
 
           {/* 🎯 Books Issued কার্ডে ক্লিক করলেই লগ দেখার মডাল অপশন ওপেন হবে */}
@@ -345,7 +457,7 @@ const AdminDashboard = () => {
               <p className="text-sm font-medium text-slate-500">Books Issued</p>
               <h3 className="text-3xl font-bold text-purple-600 mt-1">{adminStats.totalIssued}</h3>
             </div>
-            <button 
+            <button
               onClick={() => {
                 setBorrowModalTab('logs'); // সরাসরি লগ ট্যাবে ওপেন হবে
                 setIsBorrowModalOpen(true);
@@ -374,11 +486,15 @@ const AdminDashboard = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Category</label>
-                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white">
-                    <option value="Fiction">Fiction</option>
-                    <option value="Classic">Classic</option>
-                    <option value="Novel">Novel</option>
-                  </select>
+                  <input
+                    type="text"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Programming, Sci-Fi, History"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-500 transition"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">ISBN</label>
@@ -419,6 +535,8 @@ const AdminDashboard = () => {
                   <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase border-b border-slate-100">
                     <th className="px-6 py-4">Title</th>
                     <th className="px-6 py-4">Author</th>
+                    <th className="px-6 py-4">Category</th>
+                    <th className="px-6 py-4">ISBN</th>
                     <th className="px-6 py-4">Stock</th>
                     <th className="px-6 py-4 text-center">Actions</th>
                   </tr>
@@ -428,6 +546,8 @@ const AdminDashboard = () => {
                     <tr key={book._id} className="hover:bg-slate-50/80">
                       <td className="px-6 py-4 font-semibold text-slate-800">{book.title}</td>
                       <td className="px-6 py-4">{book.author}</td>
+                      <td className="px-6 py-4">{book.category}</td>
+                      <td className="px-6 py-4">{book.isbn}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${book.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{book.stock} Left</span>
                       </td>
@@ -499,25 +619,25 @@ const AdminDashboard = () => {
       {isBorrowModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            
+
             {/* মডাল ট্যাব হেডার */}
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => setBorrowModalTab('issue')}
                   className={`px-4 py-2 text-sm font-bold rounded-xl transition ${borrowModalTab === 'issue' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
                 >
                   🚀 Issue New Book
                 </button>
-                <button 
+                <button
                   onClick={() => { setBorrowModalTab('logs'); fetchIssuedLogs(); }}
                   className={`px-4 py-2 text-sm font-bold rounded-xl transition ${borrowModalTab === 'logs' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
                 >
                   📋 View Issued Logs
                 </button>
               </div>
-              <button 
-                onClick={() => { setIsBorrowModalOpen(false); setSelectedBookForBorrow(null); setBorrowMemberEmail(''); }}
+              <button
+                onClick={() => { setIsBorrowModalOpen(false); setSelectedBookForBorrow(null); setBorrowMemberEmail(''); setBorrowMemberName(''); setBorrowMemberNumber(''); }}
                 className="text-slate-400 hover:text-slate-600 font-bold"
               >
                 ❌ Close
@@ -526,15 +646,15 @@ const AdminDashboard = () => {
 
             {/* মডাল বডি কন্টেন্ট */}
             <div className="p-6 overflow-y-auto flex-1">
-              
+
               {/* ট্যাব ১: বই ইস্যু করার ফর্ম */}
               {borrowModalTab === 'issue' && (
                 <form onSubmit={handleBorrowSubmit} className="space-y-4">
                   {!selectedBookForBorrow ? (
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Search & Select Book</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Type book title..."
                         value={generalBorrowSearch}
                         onChange={(e) => setGeneralBorrowSearch(e.target.value)}
@@ -561,22 +681,32 @@ const AdminDashboard = () => {
                   {/* 👥 মেম্বার জিমেইল সার্চ ও ড্রপডাউন সাজেশন (Autosuggestion Logic) */}
                   <div className="relative">
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Member Email Address</label>
-                    <input 
-                      type="email" 
-                      required 
-                      placeholder="Type email to search member..." 
+                    <input
+                      type="email"
+                      required
+                      placeholder="Type email to search member..."
                       value={borrowMemberEmail}
-                      onChange={(e) => setBorrowMemberEmail(e.target.value)}
+                      onChange={(e) => {
+                        setBorrowMemberEmail(e.target.value);
+                        setBorrowMemberName(e.target.value);
+                        setBorrowMemberNumber(e.target.value);
+                        setIsDropdownVisible(true); // 🔄 ইউজার টাইপ করা শুরু করলেই ড্রপডাউন আবার ওপেন হবে
+                      }}
                       className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-purple-500 bg-white"
                     />
 
-                    {/* লাইভ ড্রপডাউন সাজেশন বক্স */}
-                    {filteredEmailSuggestions.length > 0 && (
+                    {/* 🎯 কন্ডিশনাল রেন্ডারিং: ড্রপডাউন ভিজিবল এবং ফিল্টারড সাজেশন থাকলেই শুধু ডিভটি দেখাবে */}
+                    {isDropdownVisible && filteredEmailSuggestions.length > 0 && (
                       <div className="absolute z-50 left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 text-xs">
                         {filteredEmailSuggestions.map(member => (
-                          <div 
+                          <div
                             key={member._id}
-                            onClick={() => setBorrowMemberEmail(member.email)}
+                            onClick={() => {
+                              setBorrowMemberEmail(member.email);
+                              setBorrowMemberName(member.name);
+                              setBorrowMemberNumber(member.number);
+                              setIsDropdownVisible(false);        // 🎯 ২. ড্রপডাউনটি সাথে সাথে গায়েব হয়ে যাবে!
+                            }}
                             className="p-2.5 hover:bg-slate-50 cursor-pointer flex justify-between items-center"
                           >
                             <div>
@@ -586,12 +716,6 @@ const AdminDashboard = () => {
                             <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">Verified</span>
                           </div>
                         ))}
-                      </div>
-                    )}
-                    {borrowMemberEmail && filteredEmailSuggestions.length === 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs flex justify-between items-center">
-                        <span>⚠️ Member not found in database!</span>
-                        <button type="button" onClick={() => { setIsBorrowModalOpen(false); setIsMemberModalOpen(true); setIsAddingMember(true); }} className="underline font-bold">Add Member</button>
                       </div>
                     )}
                   </div>
@@ -619,18 +743,42 @@ const AdminDashboard = () => {
                           <th className="px-3 py-3">Member Details</th>
                           <th className="px-3 py-3">Contact info</th>
                           <th className="px-3 py-3 text-center">Return Date</th>
+                          <th className="px-3 py-3 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {issuedBooksList.map((log) => (
                           <tr key={log._id} className="hover:bg-slate-50/80 transition">
-                            <td className="px-3 py-3 font-semibold text-purple-700">{log.bookId?.title || 'Unknown Book'}</td>
-                            <td className="px-3 py-3">
-                              <p className="font-bold text-slate-800">{log.memberId?.name || 'N/A'}</p>
-                              <p className="text-slate-400 text-[10px]">{log.memberId?.email || 'N/A'}</p>
+                            {/* বইয়ের নাম */}
+                            <td className="px-3 py-3 font-semibold text-purple-700">
+                              {log.bookId?.title || log.bookTitle || 'Unknown Book'}
                             </td>
-                            <td className="px-3 py-3 font-mono">{log.memberId?.phone || 'No Phone'}</td>
-                            <td className="px-3 py-3 text-center font-bold text-amber-600 bg-amber-50/30">⏰ {log.returnDate || 'N/A'}</td>
+
+                            {/* মেম্বার ডিটেইলস (ডিরেক্ট ফিল্ড অথবা পপুলেটেড ফিল্ড) */}
+                            <td className="px-3 py-3">
+                              <p className="font-bold text-slate-800">
+                                {log.name || log.memberId?.name || 'N/A'}
+                              </p>
+                              <p className="text-slate-400 text-[10px]">
+                                {log.memberEmail || log.email || log.memberId?.email || 'N/A'}
+                              </p>
+                            </td>
+
+                            {/* ফোন নম্বর */}
+                            <td className="px-3 py-3 font-mono">
+                              {log.number || log.phone || log.memberId?.phone || 'No Phone'}
+                            </td>
+
+                            {/* রিটার্ন ডেট ফরম্যাটিং */}
+                            <td className="px-3 py-3 text-center font-bold text-amber-600 bg-amber-50/30">
+                              ⏰ {log.returnDate || log.dueDate ? new Date(log.returnDate || log.dueDate).toLocaleDateString('en-GB') : 'N/A'}
+                            </td>
+
+                            <td className="px-3 py-3 text-center">
+                              <button className="px-3 py-1 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                                Mark as Returned
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -640,6 +788,104 @@ const AdminDashboard = () => {
               )}
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⏳ Pending Requests Details Popup Modal */}
+      {pendingPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            {/* মডাল হেডার */}
+            <div className="bg-amber-500 px-6 py-4 flex items-center justify-between text-white">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">⏳ Pending Borrow Requests</h2>
+                <p className="text-xs text-amber-50">Review, approve, or reject member requests.</p>
+              </div>
+              <button
+                onClick={() => setPendingPopup(false)}
+                className="w-8 h-8 rounded-full hover:bg-white/20 text-white font-bold transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* মডাল বডি (টেবিল) */}
+            <div className="max-h-[450px] overflow-y-auto overflow-x-auto p-4">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 text-xs font-semibold uppercase border-b">
+                    <th className="px-4 py-3">Member Name</th>
+                    <th className="px-4 py-3">Book Title</th>
+                    <th className="px-4 py-3">Due Date</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
+                  {pendingList.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-8 text-slate-400 font-medium">
+                        No pending requests found! 🎉
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingList.map((req) => (
+                      <tr key={req._id || req.id} className="hover:bg-amber-50/30 transition">
+                        <td className="px-4 py-3 font-medium text-slate-800">
+                          <div>{req.name || "Unknown Member"}</div>
+                          <div className="text-xs text-slate-400">{req.memberEmail}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-slate-700">
+                            {req.bookId?.title || "Book Data Missing"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">
+                          {new Date(req.dueDate).toLocaleDateString('en-GB')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-xs font-semibold">
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center gap-2">
+                            {/* ✅ অ্যাক্টিভ করার বাটন */}
+                            <button
+                              onClick={() => handleApprove(req._id || req.id)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition"
+                            >
+                              Approve
+                            </button>
+
+                            {/* 🗑️ ডিলিট করার বাটন */}
+                            <button
+                              onClick={() => handleDelete(req._id || req.id)}
+                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* মডাল ফুটার */}
+            <div className="px-6 py-3 bg-slate-50 border-t flex justify-end">
+              <button
+                onClick={() => setPendingPopup(false)}
+                className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium transition"
+              >
+                Close Window
+              </button>
+            </div>
+
           </div>
         </div>
       )}

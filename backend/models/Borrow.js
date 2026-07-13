@@ -2,44 +2,51 @@
 const mongoose = require('mongoose');
 
 const BorrowSchema = new mongoose.Schema({
-  // ১. কে নিল? (এখন সরাসরি মেম্বারের ইউনিক ইমেইল যাবে স্ট্রিং হিসেবে)
+  // ১. মেম্বারের তথ্য
+  name: {
+    type: String,
+    required: true, // 💡 অ্যাডমিন বা টোকেন থেকে নাম অবশ্যই আসতে হবে
+    trim: true
+  },
+  number: {
+    type: String,
+    default: null,
+    trim: true
+  },
   memberEmail: {
-    type: String, // 🎯 ObjectId এর জায়গায় সরাসরি String করা হলো
+    type: String, 
     required: true,
     trim: true,
     lowercase: true
   },
 
-  // ২. কোন বই নিল? (বইয়ের মঙ্গোডিবি আইডি-ই থাকল, কারণ বই তো সাধারণত ইমেইল দিয়ে ট্র্যাক হয় না)
+  // ২. কোন বই নিল?
   bookId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Book', 
     required: true
   },
 
-  // ৩. কবে নিল?
+  // ৩. তারিখসমূহ
   borrowDate: {
     type: Date,
     default: Date.now
   },
-
-  // ৪. কবে ফেরত দেওয়ার কথা?
   dueDate: {
     type: Date,
     required: true
   },
-
-  // ৫. কবে ফেরত দিল?
   returnDate: {
     type: Date,
     default: null
   },
 
-  // ৬. বইটির বর্তমান অবস্থা
+  // ৪. বইটির বর্তমান অবস্থা
   status: {
     type: String,
-    enum: ['Active', 'Returned', 'Overdue'],
-    default: 'Active'
+    // 🎯 এখানে 'Pending' যুক্ত করা হলো, এবং ডিফল্ট স্ট্যাটাস 'Pending' করা হলো
+    enum: ['Pending', 'Active', 'Returned', 'Overdue'],
+    default: 'Pending'
   }
 }, { 
   timestamps: true 
