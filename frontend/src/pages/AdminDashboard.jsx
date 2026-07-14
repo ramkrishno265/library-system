@@ -369,6 +369,27 @@ const AdminDashboard = () => {
   };
 
 
+  // ১. পেজিনেশনের জন্য স্টেট
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // প্রতি পেজে ১০টি করে ডেটা দেখাবে
+
+  // ২. সার্চ ফিল্টারিং করা ডেটা
+  const filteredBooks = booksList.filter(b =>
+    b.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // ৩. পেজিনেশনের ক্যালকুলেশন
+  const indexOfLastBook = currentPage * itemsPerPage;
+  const indexOfFirstBook = indexOfLastBook - itemsPerPage;
+  const currentBooks = filteredBooks.slice(indexOfFirstBook, indexOfLastBook);
+  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage);
+
+  // ৪. সার্চ ফিল্টার চেঞ্জ হলে পেজ ১-এ ব্যাক করার জন্য (ঐচ্ছিক কিন্তু দারুণ কাজের)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+
 
 
 
@@ -529,39 +550,104 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase border-b border-slate-100">
-                    <th className="px-6 py-4">Title</th>
-                    <th className="px-6 py-4">Author</th>
-                    <th className="px-6 py-4">Category</th>
-                    <th className="px-6 py-4">ISBN</th>
-                    <th className="px-6 py-4">Stock</th>
-                    <th className="px-6 py-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-                  {booksList.filter(b => b.title?.toLowerCase().includes(searchQuery.toLowerCase())).map((book) => (
-                    <tr key={book._id} className="hover:bg-slate-50/80">
-                      <td className="px-6 py-4 font-semibold text-slate-800">{book.title}</td>
-                      <td className="px-6 py-4">{book.author}</td>
-                      <td className="px-6 py-4">{book.category}</td>
-                      <td className="px-6 py-4">{book.isbn}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${book.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{book.stock} Left</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button onClick={() => { setSelectedBookForBorrow(book); setBorrowModalTab('issue'); setIsBorrowModalOpen(true); }} disabled={book.stock <= 0} className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg disabled:opacity-30">🔄</button>
-                          <button onClick={() => handleEditClick(book)} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg">📝</button>
-                          <button onClick={() => handleDeleteClick(book._id)} className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg">🗑️</button>
-                        </div>
-                      </td>
+            <div className="space-y-4"> {/* পুরো টেবিল ও পেজিনেশনকে র‍্যাপ করার জন্য */}
+              <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm bg-white">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase border-b border-slate-100">
+                      <th className="px-6 py-4">Title</th>
+                      <th className="px-6 py-4">Author</th>
+                      <th className="px-6 py-4">Category</th>
+                      <th className="px-6 py-4">ISBN</th>
+                      <th className="px-6 py-4">Stock</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
+                    {currentBooks.length > 0 ? (
+                      currentBooks.map((book) => (
+                        <tr key={book._id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-6 py-4 font-semibold text-slate-800">{book.title}</td>
+                          <td className="px-6 py-4">{book.author}</td>
+                          <td className="px-6 py-4">{book.category}</td>
+                          <td className="px-6 py-4">{book.isbn}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${book.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                              {book.stock} Left
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => { setSelectedBookForBorrow(book); setBorrowModalTab('issue'); setIsBorrowModalOpen(true); }}
+                                disabled={book.stock <= 0}
+                                className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg disabled:opacity-30 transition-colors"
+                              >
+                                🔄
+                              </button>
+                              <button onClick={() => handleEditClick(book)} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors">📝</button>
+                              <button onClick={() => handleDeleteClick(book._id)} className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors">🗑️</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-10 text-center text-slate-400">
+                          No books found!
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* --- পেজিনেশন কন্ট্রোল বাটনসমূহ --- */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                  <div className="text-sm text-slate-500">
+                    Showing <span className="font-medium">{indexOfFirstBook + 1}</span> to{' '}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastBook, filteredBooks.length)}
+                    </span>{' '}
+                    of <span className="font-medium">{filteredBooks.length}</span> books
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    >
+                      Previous
+                    </button>
+
+                    {/* পেজ নাম্বারগুলো দেখানোর জন্য */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${currentPage === page
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-slate-600 hover:bg-slate-50 border border-transparent'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </div>
