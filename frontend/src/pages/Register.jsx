@@ -65,7 +65,7 @@ const Register = () => {
             <select name="role" value={formData.role} onChange={handleChange} 
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition cursor-pointer">
               <option value="member">Library Member</option>
-              <option value="admin">System Admin</option>
+             {/*<option value="admin">System Admin</option>*/} 
             </select>
           </div>
           
